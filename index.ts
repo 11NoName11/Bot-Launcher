@@ -11,7 +11,8 @@ console.log(chalk.bold.green("Runner bot Discord by " + chalk.cyan.underline("Ra
 console.log(chalk.bold.blue("jangan lupa follow instagram " + chalk.cyan.underline("@rahawaeh_113")));
 console.log(chalk.bold(chalk.red("Ingat! Jangan bagikan token Bot Discord-mu ke siapapun!\n")));
 console.log(chalk.bold("Alat ini akan membantumu mengaktifkan " + chalk.cyan.underline("Bot Discord")));
-console.log(chalk.bold("Jika kamu mengalami masalah, hubungi saya di Discord: " + chalk.cyan.underline("@rahawaeh_113") + "\n"));
+console.log(chalk.bold("Jika kamu mengalami masalah, hubungi saya di Discord: ") +chalk.cyan.underline("https://discord.com/users/1011588306724737105 "));
+console.log(chalk.bold("my name in discord : ") +chalk.cyan.underline("@rahawaeh_113"));
 
 // fungsi checkToken
 export async function checkToken(value: string): Promise<boolean> {
@@ -233,7 +234,7 @@ async function main() {
           console.error("Error saat handling /copy:", err);
           try {
             await interaction.reply({ content: "Terjadi kesalahan saat mengambil file. Cek log di terminal.", ephemeral: true });
-          } catch {}
+          } catch { }
         }
       }
 
@@ -246,3 +247,7 @@ async function main() {
 
 // panggil fungsi utama
 main();
+process.on("SIGINT", () => {
+  console.log("\n🛑 Menutup bot Discord dengan aman...");
+  process.exit(0);
+});
