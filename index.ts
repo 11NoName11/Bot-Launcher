@@ -1,32 +1,28 @@
 import chalk from "chalk";
-import { Client, EmbedBuilder, IntentsBitField, Events, AttachmentBuilder } from "discord.js";
-import fetch from "node-fetch";
+import { Client, IntentsBitField, Events, EmbedBuilder } from "discord.js";
 import ora from "ora";
-import dotenv from 'dotenv';
-import fs from "fs";
-import path from "path";
+import dotenv from "dotenv";
+import fetch from "node-fetch";
+import { handleCommands, registerCommands } from "./commands.js";
+
 dotenv.config();
 
 console.log(chalk.bold.green("Runner bot Discord by " + chalk.cyan.underline("Rahaaa_")));
 console.log(chalk.bold.blue("jangan lupa follow instagram " + chalk.cyan.underline("@rahawaeh_113")));
 console.log(chalk.bold(chalk.red("Ingat! Jangan bagikan token Bot Discord-mu ke siapapun!\n")));
 console.log(chalk.bold("Alat ini akan membantumu mengaktifkan " + chalk.cyan.underline("Bot Discord")));
-console.log(chalk.bold("Jika kamu mengalami masalah, hubungi saya di Discord: ") +chalk.cyan.underline("https://discord.com/users/1011588306724737105 "));
-console.log(chalk.bold("my name in discord : ") +chalk.cyan.underline("@rahawaeh_113"));
+console.log(chalk.bold("Jika kamu mengalami masalah, hubungi saya di Discord: ") + chalk.cyan.underline("https://discord.com/users/1011588306724737105 "));
+console.log(chalk.bold("my name in discord : ") + chalk.cyan.underline("@rahawaeh_113"));
 
-// fungsi checkToken
-export async function checkToken(value: string): Promise<boolean> {
+async function checkToken(value) {
   if (!value) return false;
   const res = await fetch("https://discord.com/api/v10/users/@me", {
     method: "GET",
-    headers: {
-      Authorization: `Bot ${value.toString()}`,
-    },
+    headers: { Authorization: `Bot ${value}` },
   });
   return res.status === 200;
 }
 
-// fungsi utama
 async function main() {
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!token) {
@@ -44,209 +40,149 @@ async function main() {
   const spinner = ora(chalk.bold("Menjalankan Bot Discord")).start();
 
   const client = new Client({
-    intents: [IntentsBitField.Flags.Guilds],
+    intents: [
+      IntentsBitField.Flags.Guilds,
+      IntentsBitField.Flags.GuildMembers,
+      IntentsBitField.Flags.GuildMessages,
+    ],
   });
 
   try {
     await client.login(token);
-  } catch (_e) {
+  } catch {
     spinner.fail(chalk.bold("Terjadi kesalahan saat login ke Discord!"));
     process.exit(0);
   }
-
-  const slashSpinner = ora(chalk.bold("Membuat interaksi perintah slash..."));
 
   client.once("ready", async (client) => {
     spinner.succeed(chalk.bold(`Berhasil login sebagai ${chalk.cyan.underline(client.user.tag)}!`));
     console.log(
       chalk.bold.green("✔") +
-      chalk.bold(
-        " Gunakan tautan ini untuk menambahkan bot ke servermu: " +
-        chalk.cyan.italic.underline(`https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&scope=applications.commands%20bot\n`)
-      )
+        chalk.bold(
+          " Gunakan tautan ini untuk menambahkan bot ke servermu: " +
+            chalk.cyan.italic.underline(`https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&scope=applications.commands%20bot\n`)
+        )
     );
 
-    await client.application?.commands.set([
-      {
-        name: "active", description: "Dapatkan Lencana Pengembang Aktif Discord"
+    await registerCommands(client);
+    ora(chalk.bold("Buka server Discord-mu dan gunakan perintah slash (/) di bot yang kamu buat")).start();
 
-      },
-      {
-        name: "ping", description: "Cek seberapa cepat bot ini respon 🛰️"
-      }, {
-        name: "roblox",
-        description: "Cek informasi lengkap akun Roblox",
-        options: [
-          {
-            name: "username",
-            description: "Masukkan username Roblox",
-            type: 3,
-            required: true,
-          },
-        ],
-      },
-      {
-        name: "copy",
-        description: "Menampilkan tombol copy untuk kode rahasia",
-      }
-    ]);
+    // 🟢 Status bot
+    client.user.setPresence({
+      activities: [
+        {
+          name: "| menjaga server rahaaa_🌙", // teks status
+          type: 0, // 0 = Playing, 1 = Streaming, 2 = Listening, 3 = Watching, 5 = Competing
+        },
+      ],
+      status: "online", // bisa "online", "idle", "dnd", atau "invisible"
+    });
 
-    slashSpinner.text = chalk.bold("Buka server Discord-mu dan gunakan perintah slash (/) di bot yang kamu buat");
-    slashSpinner.start();
+    console.log(chalk.cyan("🌙 Status bot sudah diatur!"));
   });
 
-  client.on(Events.InteractionCreate, async (interaction) => {
+  // === 🎉 Pesan Selamat Datang (DM + Channel)
+  client.on("guildMemberAdd", async (member) => {
+
+    const welcomeEmbed = new EmbedBuilder()
+      .setColor(0x57f287)
+      .setTitle(`👋 Selamat Datang di ${member.guild.name}!`)
+      .setDescription(
+        `Halo ${member.user}, senang banget kamu udah join!\n\n🌟 Kami harap kamu betah di sini!\n\n📜 Jangan lupa baca peraturan server biar makin seru dan aman buat semua 😄`
+      )
+      .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+      .setFooter({
+        text: `Selamat datang, ${member.user.username}! • ${member.guild.memberCount} anggota sekarang`,
+        iconURL: member.guild.iconURL({ dynamic: true }),
+      })
+      .setTimestamp();
+
+    // Kirim DM
     try {
-      if (!interaction.isCommand()) return;
-
-      // /active
-      if (interaction.commandName === "active") {
-        console.log(chalk.bold.green("Interaksi perintah /active diterima!"));
-        const embed = new EmbedBuilder()
-          .setAuthor({
-            name: "Lencana Pengembang Aktif Discord",
-            iconURL: "https://cdn.discordapp.com/emojis/1040325165512396830.webp?size=64&quality=lossless",
-          })
-          .setTitle("Kamu berhasil menjalankan perintah slash!")
-          .setColor("#34DB98")
-          .setDescription(
-            "- Buka *https://discord.com/developers/active-developer* dan klaim lencanamu\n - Proses verifikasi bisa memakan waktu hingga 24 jam, jadi bersabarlah sampai lencanamu muncul"
-          )
-          .setFooter({
-            text: "Dibuat oleh @rahawaeh_113",
-            iconURL: "https://cdn.discordapp.com/emojis/1040325165512396830.webp?size=64&quality=lossless",
-          });
-
-        await interaction.reply({ embeds: [embed] });
-      }
-
-      // /ping
-      if (interaction.commandName === "ping") {
-        console.log(chalk.bold.yellow("Interaksi perintah /ping diterima!"));
-
-        const start = Date.now();
-        const msg = await interaction.reply({
-          content: "⏳ Menghitung ping...",
-          fetchReply: true,
-        });
-        const end = Date.now();
-        const latency = end - start;
-
-        const embed = new EmbedBuilder()
-          .setColor("#00FF9C")
-          .setTitle("🏓 Pong!")
-          .setDescription(`📡 **Latency bot:** \`${latency}ms\`\n💻 **API latency:** \`${Math.round(interaction.client.ws.ping)}ms\``)
-          .setFooter({
-            text: "Dibuat dengan ❤️ oleh rahaaa_",
-            iconURL: "https://cdn.discordapp.com/emojis/1040325165512396830.webp?size=64&quality=lossless",
-          });
-
-        await interaction.editReply({ content: "", embeds: [embed] });
-      }
-
-      // /roblox
-      if (interaction.commandName === "roblox") {
-        const username = interaction.options.getString("username");
-        await interaction.deferReply();
-
-        try {
-          const resUser = await fetch("https://users.roblox.com/v1/usernames/users", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ usernames: [username] }),
-          });
-          const userData = await resUser.json();
-          const user = userData.data[0];
-          if (!user) return await interaction.editReply(`❌ Username **${username}** tidak ditemukan.`);
-
-          const resDetail = await fetch(`https://users.roblox.com/v1/users/${user.id}`);
-          const detail = await resDetail.json();
-
-          const resFriends = await fetch(`https://friends.roblox.com/v1/users/${user.id}/friends/count`);
-          const { count: friendCount } = await resFriends.json();
-
-          const resGames = await fetch(`https://games.roblox.com/v2/users/${user.id}/games?limit=3&sortOrder=Asc`);
-          const gameData = await resGames.json();
-          const topGame = gameData.data && gameData.data.length > 0 ? gameData.data[0] : null;
-
-          const avatarURL = `https://www.roblox.com/headshot-thumbnail/image?userId=${user.id}&width=420&height=420&format=png`;
-          const createdAt = new Date(detail.created).toLocaleString("id-ID", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          });
-
-          const embed = new EmbedBuilder()
-            .setColor("#00A2FF")
-            .setTitle(`👤 Profil Roblox: ${user.displayName}`)
-            .setURL(`https://www.roblox.com/users/${user.id}/profile`)
-            .setThumbnail(avatarURL)
-            .addFields(
-              { name: "🧩 Username", value: user.name, inline: true },
-              { name: "🪪 User ID", value: `${user.id}`, inline: true },
-              { name: "👥 Jumlah Teman", value: `${friendCount ?? 0}`, inline: true },
-              { name: "🕐 Akun Dibuat", value: createdAt, inline: false },
-              { name: "📜 Bio", value: detail.description || "_(kosong)_", inline: false },
-            );
-
-          if (topGame) {
-            embed.addFields({
-              name: "🎮 Game Buatan",
-              value: `[${topGame.name}](https://www.roblox.com/games/${topGame.id}) — ${topGame.playing ?? 0} pemain aktif`,
-              inline: false,
-            });
-          }
-
-          embed.setFooter({
-            text: "Data diambil dari API resmi Roblox",
-            iconURL: "https://tr.rbxcdn.com/32b76c92f2f9f61e48ab67e528ce3f85/420/420/Image/Png",
-          });
-
-          await interaction.editReply({ content: "", embeds: [embed] });
-          console.log(chalk.bold.green(`✅ Profil Roblox ${username} berhasil dikirim.`));
-
-        } catch (err) {
-          console.error(err);
-          await interaction.editReply("⚠️ Terjadi kesalahan saat mengambil data Roblox. Coba lagi nanti!");
-        }
-      }
-
-      // ===== Tambahan: /copy (membaca file kodeRahasia.txt dan mengirimnya, TIDAK mengeksekusi) =====
-      if (interaction.commandName === "copy") {
-        try {
-          const filePath = path.resolve(process.cwd(), "kodeRahasia.txt"); // pastikan file ada di root project
-          if (!fs.existsSync(filePath)) {
-            await interaction.reply({ content: "File kodeRahasia.txt tidak ditemukan di folder project.", ephemeral: true });
-            return;
-          }
-
-          const kode = fs.readFileSync(filePath, "utf-8");
-
-          // Jangan pernah eval / jalankan isi kode — hanya kirim sebagai teks atau file
-          if (kode.length <= 1900) {
-            await interaction.reply({ content: `\`\`\`js\n${kode}\n\`\`\``, ephemeral: true });
-          } else {
-            const attachment = new AttachmentBuilder(Buffer.from(kode, "utf-8"), { name: "kodeRahasia.txt" });
-            await interaction.reply({ content: "Ini code dan jan lupa follow @rahawaeh_113", files: [attachment], ephemeral: true });
-          }
-        } catch (err) {
-          console.error("Error saat handling /copy:", err);
-          try {
-            await interaction.reply({ content: "Terjadi kesalahan saat mengambil file. Cek log di terminal.", ephemeral: true });
-          } catch { }
-        }
-      }
-
+      await member.send({ embeds: [welcomeEmbed] });
+      console.log(chalk.green(`✔ DM selamat datang dikirim ke ${member.user.tag}`));
     } catch (err) {
-      console.error(err);
-      process.exit(0);
+      console.log(chalk.red(`✖ Gagal kirim DM ke ${member.user.tag}: ${err.message}`));
+    }
+
+    // Kirim ke channel #welcome
+    const welcomeChannel =
+      member.guild.channels.cache.find(
+        (ch) => ch.name.toLowerCase() === "welcome" && ch.isTextBased()
+      ) || null;
+
+    if (welcomeChannel) {
+      welcomeChannel.send({
+        content: `🎉 Selamat datang ${member.user} di server **${member.guild.name}**!`,
+        embeds: [welcomeEmbed],
+      });
+    }
+  });
+
+  // === 👋 Pesan Selamat Tinggal (Goodbye)
+  client.on("guildMemberRemove", async (member) => {
+
+    const goodbyeEmbed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setTitle(`😢 ${member.user.username} telah keluar dari server`)
+      .setDescription(`Kami harap kamu sukses di luar sana! 🚀`)
+      .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+      .setFooter({
+        text: `${member.guild.memberCount} anggota tersisa`,
+        iconURL: member.guild.iconURL({ dynamic: true }),
+      })
+      .setTimestamp();
+
+    // Kirim ke channel #goodbye
+    const goodbyeChannel =
+      member.guild.channels.cache.find(
+        (ch) => ch.name.toLowerCase() === "goodbye" && ch.isTextBased()
+      ) || null;
+
+    if (goodbyeChannel) {
+      goodbyeChannel.send({
+        content: `👋 Selamat tinggal **${member.user.username}**!`,
+        embeds: [goodbyeEmbed],
+      });
+    }
+
+    console.log(chalk.yellow(`⚠ ${member.user.tag} keluar dari server ${member.guild.name}`));
+  });
+
+  client.on("guildMemberRemove", async (member) => {
+    try {
+      const goodbyeEmbed = new EmbedBuilder()
+        .setColor(0xff5555) // warna merah lembut
+        .setTitle(`😢 Selamat Tinggal, ${member.user.username}!`)
+        .setDescription(
+          `👋 ${member.user} telah meninggalkan server **${member.guild.name}**.\n` +
+            `Semoga sukses di mana pun kamu berada 💫`
+        )
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+        .setFooter({
+          text: `${member.guild.name} • Sekarang tersisa ${member.guild.memberCount} anggota`,
+          iconURL: member.guild.iconURL({ dynamic: true }) || undefined,
+        })
+        .setTimestamp();
+
+      const channel = member.guild.channels.cache.find(
+        (ch) => ch.name === "goodbye" && ch.isTextBased()
+      );
+
+      if (channel) {
+        await channel.send({ embeds: [goodbyeEmbed] });
+        console.log(`👋 Pesan goodbye dikirim untuk ${member.user.tag}`);
+      } else {
+        console.log("⚠️ Channel #goodbye tidak ditemukan!");
+      }
+    } catch (error) {
+      console.log(`❌ Gagal mengirim pesan goodbye: ${error.message}`);
     }
   });
 }
 
-// panggil fungsi utama
 main();
+
 process.on("SIGINT", () => {
   console.log("\n🛑 Menutup bot Discord dengan aman...");
   process.exit(0);

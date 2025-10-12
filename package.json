@@ -5,8 +5,7 @@
   "exports": null,
   "type": "module",
   "scripts": {
-    "start": "tsx index.ts",
-    "format": "prettier . --write --cache --ignore-unknown",
+    "start": "nodemon --exec tsx index.ts",
     "format:check": "prettier . --check --cache --ignore-unknown",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -44,7 +43,9 @@
     "@types/prompts": "2.4.9",
     "eslint": "9.35.0",
     "prettier": "3.6.2",
-    "tsx": "4.20.5"
+    "ts-node": "^10.9.2",
+    "tsx": "4.20.5",
+    "typescript": "^5.8.3"
   },
   "packageManager": "pnpm@10.18.0",
   "pnpm": {
