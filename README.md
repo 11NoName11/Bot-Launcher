@@ -1,5 +1,4 @@
-![Active Developer](https://github.com/11NoName11/Bot-Launcher/assets/49127376/17770e3d-dd86-4044-9969-7adcfc3ebff3)
-
+![Active Developer](https://github.com/IgorKowalczyk/active-dev/assets/49127376/17770e3d-dd86-4044-9969-7adcfc3ebff3)
 <div align="center">
   <a aria-label="GitHub License" href="https://github.com/11NoName11/Bot-Launcher/blob/main/license.md">
     <img src="https://img.shields.io/github/license/11NoName11/Bot-Launcher?color=%2334D058&logo=github&style=flat-square&label=License">
