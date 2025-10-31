@@ -17,6 +17,12 @@ export async function registerCommands(client) {
             ],
         },
         { name: "copy", description: "Menampilkan tombol copy untuk kode rahasia" },
+        {
+            name: "ai",
+            description: "Tanya ke AI langsung di Discord",
+            options: [{ name: "prompt", description: "Pertanyaan kamu", type: 3, required: true }]
+        },
+
     ]);
 }
 
@@ -134,6 +140,22 @@ export async function handleCommands(interaction) {
                 await interaction.reply({ content: "Ini code dan jan lupa follow @rahawaeh_113", files: [attachment], ephemeral: true });
             }
         }
+
+        const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${process.env.AI_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [{ role: "user", content: "Halo!" }],
+            }),
+        });
+
+
+
+
     } catch (err) {
         console.error(err);
         try {

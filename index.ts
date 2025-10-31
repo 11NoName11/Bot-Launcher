@@ -1,11 +1,10 @@
 import chalk from "chalk";
-import { Client, IntentsBitField, Events, EmbedBuilder } from "discord.js";
+import { Client, IntentsBitField, EmbedBuilder, MessageFlags, Events } from "discord.js";
 import ora from "ora";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import { handleCommands, registerCommands } from "./commands.js";
-
-dotenv.config();
+dotenv.config(); // pastikan ini tetap di paling atas
 
 console.log(chalk.bold.green("Runner bot Discord by " + chalk.cyan.underline("Rahaaa_")));
 console.log(chalk.bold.blue("jangan lupa follow instagram " + chalk.cyan.underline("@rahawaeh_113")));
@@ -23,21 +22,20 @@ async function checkToken(value) {
   return res.status === 200;
 }
 
-async function main() {
-  const token = process.env.DISCORD_BOT_TOKEN;
+async function runBot(token, label = "Bot") {
   if (!token) {
-    console.error("✖ Token tidak ditemukan! Pastikan sudah buat file .env");
-    process.exit(1);
+    console.error(`✖ Token ${label} tidak ditemukan! Pastikan sudah ada di file .env`);
+    return;
   }
 
   const isValid = await checkToken(token);
   if (!isValid) {
-    console.log("✖ Token Bot Discord tidak valid!");
-    process.exit(0);
+    console.log(`✖ Token ${label} tidak valid!`);
+    return;
   }
 
   console.log();
-  const spinner = ora(chalk.bold("Menjalankan Bot Discord")).start();
+  const spinner = ora(chalk.bold(`Menjalankan ${label} Discord`)).start();
 
   const client = new Client({
     intents: [
@@ -50,40 +48,45 @@ async function main() {
   try {
     await client.login(token);
   } catch {
-    spinner.fail(chalk.bold("Terjadi kesalahan saat login ke Discord!"));
-    process.exit(0);
+    spinner.fail(chalk.bold(`Terjadi kesalahan saat login ${label}!`));
+    return;
   }
 
   client.once("ready", async (client) => {
     spinner.succeed(chalk.bold(`Berhasil login sebagai ${chalk.cyan.underline(client.user.tag)}!`));
     console.log(
       chalk.bold.green("✔") +
-        chalk.bold(
-          " Gunakan tautan ini untuk menambahkan bot ke servermu: " +
-            chalk.cyan.italic.underline(`https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&scope=applications.commands%20bot\n`)
-        )
+      chalk.bold(
+        ` Gunakan tautan ini untuk menambahkan ${label}: ` +
+        chalk.cyan.italic.underline(`https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&scope=applications.commands%20bot\n`)
+      )
     );
 
     await registerCommands(client);
-    ora(chalk.bold("Buka server Discord-mu dan gunakan perintah slash (/) di bot yang kamu buat")).start();
+    ora(chalk.bold(`Buka server Discord-mu dan gunakan slash (/) di ${label}`)).start();
 
-    // 🟢 Status bot
     client.user.setPresence({
       activities: [
         {
-          name: "| menjaga server rahaaa_🌙", // teks status
-          type: 0, // 0 = Playing, 1 = Streaming, 2 = Listening, 3 = Watching, 5 = Competing
+          name: `| menjaga server rahaaa_🌙`,
+          type: 3,
         },
       ],
-      status: "online", // bisa "online", "idle", "dnd", atau "invisible"
+      status: "online",
     });
 
-    console.log(chalk.cyan("🌙 Status bot sudah diatur!"));
+    console.log(chalk.cyan(`🌙 Status ${label} sudah diatur!`));
   });
 
-  // === 🎉 Pesan Selamat Datang (DM + Channel)
-  client.on("guildMemberAdd", async (member) => {
+  client.on("interactionCreate", async (interaction) => {
+    try {
+      await handleCommands(interaction);
+    } catch (err) {
+      console.error(chalk.red(`⚠️ Terjadi error di ${label}:`), err);
+    }
+  });
 
+  client.on("guildMemberAdd", async (member) => {
     const welcomeEmbed = new EmbedBuilder()
       .setColor(0x57f287)
       .setTitle(`👋 Selamat Datang di ${member.guild.name}!`)
@@ -97,7 +100,6 @@ async function main() {
       })
       .setTimestamp();
 
-    // Kirim DM
     try {
       await member.send({ embeds: [welcomeEmbed] });
       console.log(chalk.green(`✔ DM selamat datang dikirim ke ${member.user.tag}`));
@@ -105,7 +107,6 @@ async function main() {
       console.log(chalk.red(`✖ Gagal kirim DM ke ${member.user.tag}: ${err.message}`));
     }
 
-    // Kirim ke channel #welcome
     const welcomeChannel =
       member.guild.channels.cache.find(
         (ch) => ch.name.toLowerCase() === "welcome" && ch.isTextBased()
@@ -119,69 +120,46 @@ async function main() {
     }
   });
 
-  // === 👋 Pesan Selamat Tinggal (Goodbye)
   client.on("guildMemberRemove", async (member) => {
-
     const goodbyeEmbed = new EmbedBuilder()
-      .setColor(0xed4245)
-      .setTitle(`😢 ${member.user.username} telah keluar dari server`)
-      .setDescription(`Kami harap kamu sukses di luar sana! 🚀`)
+      .setColor(0xff5555)
+      .setTitle(`😢 Selamat Tinggal, ${member.user.username}!`)
+      .setDescription(
+        `👋 ${member.user} telah meninggalkan server **${member.guild.name}**.\n` +
+        `Semoga sukses di mana pun kamu berada 💫`
+      )
       .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
       .setFooter({
-        text: `${member.guild.memberCount} anggota tersisa`,
-        iconURL: member.guild.iconURL({ dynamic: true }),
+        text: `${member.guild.name} • Sekarang tersisa ${member.guild.memberCount} anggota`,
+        iconURL: member.guild.iconURL({ dynamic: true }) || undefined,
       })
       .setTimestamp();
 
-    // Kirim ke channel #goodbye
-    const goodbyeChannel =
-      member.guild.channels.cache.find(
-        (ch) => ch.name.toLowerCase() === "goodbye" && ch.isTextBased()
-      ) || null;
+    const channel = member.guild.channels.cache.find(
+      (ch) => ch.name === "goodbye" && ch.isTextBased()
+    );
 
-    if (goodbyeChannel) {
-      goodbyeChannel.send({
-        content: `👋 Selamat tinggal **${member.user.username}**!`,
-        embeds: [goodbyeEmbed],
-      });
-    }
-
-    console.log(chalk.yellow(`⚠ ${member.user.tag} keluar dari server ${member.guild.name}`));
-  });
-
-  client.on("guildMemberRemove", async (member) => {
-    try {
-      const goodbyeEmbed = new EmbedBuilder()
-        .setColor(0xff5555) // warna merah lembut
-        .setTitle(`😢 Selamat Tinggal, ${member.user.username}!`)
-        .setDescription(
-          `👋 ${member.user} telah meninggalkan server **${member.guild.name}**.\n` +
-            `Semoga sukses di mana pun kamu berada 💫`
-        )
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-        .setFooter({
-          text: `${member.guild.name} • Sekarang tersisa ${member.guild.memberCount} anggota`,
-          iconURL: member.guild.iconURL({ dynamic: true }) || undefined,
-        })
-        .setTimestamp();
-
-      const channel = member.guild.channels.cache.find(
-        (ch) => ch.name === "goodbye" && ch.isTextBased()
-      );
-
-      if (channel) {
-        await channel.send({ embeds: [goodbyeEmbed] });
-        console.log(`👋 Pesan goodbye dikirim untuk ${member.user.tag}`);
-      } else {
-        console.log("⚠️ Channel #goodbye tidak ditemukan!");
-      }
-    } catch (error) {
-      console.log(`❌ Gagal mengirim pesan goodbye: ${error.message}`);
+    if (channel) {
+      await channel.send({ embeds: [goodbyeEmbed] });
+      console.log(`👋 Pesan goodbye dikirim untuk ${member.user.tag}`);
+    } else {
+      console.log("⚠️ Channel #goodbye tidak ditemukan!");
     }
   });
 }
 
-main();
+// === Jalankan semua token dari .env ===
+const tokens = [
+  process.env.DISCORD_BOT_TOKEN,
+  // process.env.DISCORD_BOT_TOKEN1,
+].filter(Boolean);
+
+if (tokens.length === 0) {
+  console.error("✖ Tidak ada token ditemukan di .env");
+  process.exit(1);
+}
+
+tokens.forEach((token, i) => runBot(token, `Bot ${i + 1}`));
 
 process.on("SIGINT", () => {
   console.log("\n🛑 Menutup bot Discord dengan aman...");
